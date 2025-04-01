@@ -38,6 +38,16 @@ class DeepSearchAgent:
             except Exception as e:
                 print(f"Error creating structured GKeep data: {str(e)}")
         
+        # Check if consolidated schedules exists, if not try to create it
+        if 'consolidated_schedules.csv' not in csv_files and os.path.exists('exported_sheets_actual'):
+            try:
+                self._ensure_consolidated_schedules()
+                # Add the newly created file to the list if it now exists
+                if os.path.exists('consolidated_schedules.csv'):
+                    csv_files.append('consolidated_schedules.csv')
+            except Exception as e:
+                print(f"Error creating consolidated schedules: {str(e)}")
+        
         return csv_files
     
     def _ensure_gkeep_structured(self):
@@ -56,6 +66,24 @@ class DeepSearchAgent:
                 print(f"{Fore.GREEN}Successfully created GKeep_Structured.csv{Style.RESET_ALL}")
             except Exception as e:
                 print(f"{Fore.RED}Failed to create structured GKeep data: {str(e)}{Style.RESET_ALL}")
+                raise
+    
+    def _ensure_consolidated_schedules(self):
+        """Ensure consolidated schedule data exists by running the processor if needed"""
+        if not os.path.exists('consolidated_schedules.csv') and os.path.exists('daily_schedule_processor.py'):
+            print(f"{Fore.CYAN}Creating consolidated schedule data from exported sheets...{Style.RESET_ALL}")
+            try:
+                # Import the daily_schedule_processor module dynamically
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("daily_schedule_processor", "daily_schedule_processor.py")
+                daily_schedule_processor = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(daily_schedule_processor)
+                
+                # Run the processing function
+                daily_schedule_processor.process_daily_schedules()
+                print(f"{Fore.GREEN}Successfully created consolidated_schedules.csv{Style.RESET_ALL}")
+            except Exception as e:
+                print(f"{Fore.RED}Failed to create consolidated schedules: {str(e)}{Style.RESET_ALL}")
                 raise
     
     def load_csv_files(self):
