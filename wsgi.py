@@ -5,10 +5,21 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
+    # Import the web interface module
     from web_search_interface import app, ensure_template_exists
     
     # Ensure template directory exists
     ensure_template_exists()
+    
+    # Process calendar data if it exists
+    if os.path.exists('cleaned_calendar_events.csv'):
+        print("Processing calendar data...")
+        try:
+            from calendar_adapter import process_calendar_data
+            process_calendar_data()
+            print("Calendar data processing complete")
+        except Exception as e:
+            print(f"Warning: Calendar data processing failed: {str(e)}")
     
     # Explicitly set debug to False for production
     app.debug = False
