@@ -21,6 +21,16 @@ try:
         except Exception as e:
             print(f"Warning: Calendar data processing failed: {str(e)}")
     
+    # Process daily schedules if the folder exists
+    if os.path.exists('exported_sheets_actual'):
+        print("Processing daily schedule data...")
+        try:
+            from daily_schedule_processor import process_daily_schedules
+            process_daily_schedules()
+            print("Daily schedule data processing complete")
+        except Exception as e:
+            print(f"Warning: Daily schedule processing failed: {str(e)}")
+    
     # Explicitly set debug to False for production
     app.debug = False
     
