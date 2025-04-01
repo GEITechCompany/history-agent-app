@@ -1,4 +1,4 @@
-# Deep Search Agent for Client Information
+# Deep Search Agent for Client Information (History Agent App)
 
 A powerful search tool for extracting client information across multiple CSV files. This agent is designed to search through your entire client database and provide comprehensive results.
 
@@ -119,4 +119,4 @@ Contributions are welcome! Feel free to submit a pull request or open an issue i
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
