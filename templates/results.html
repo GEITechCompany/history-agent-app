@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results - Deep Search Agent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        .result-card {
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s;
+        }
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .highlight {
+            background-color: #fff3cd;
+            padding: 0 0.2rem;
+            border-radius: 0.2rem;
+        }
+        .source-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            margin: 0.5rem;
+        }
+        .card-body {
+            padding-bottom: 2.5rem;
+        }
+        .score-badge {
+            position: absolute;
+            bottom: 0.5rem;
+            right: 0.5rem;
+        }
+        .back-button {
+            margin-bottom: 1.5rem;
+        }
+        .summary-alert {
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="back-button">
+            <a href="/" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Search
+            </a>
+        </div>
+
+        <h1 class="mb-4">Search Results</h1>
+        
+        <div class="summary-alert alert {% if count > 0 %}alert-success{% else %}alert-warning{% endif %}">
+            {% if count > 0 %}
+                <h4 class="alert-heading">Found {{ count }} results</h4>
+                {% if query %}
+                    <p>Search results for: "{{ query }}"</p>
+                {% else %}
+                    <p>Search results for the specified criteria</p>
+                {% endif %}
+            {% else %}
+                <h4 class="alert-heading">No results found</h4>
+                {% if query %}
+                    <p>No matches found for: "{{ query }}"</p>
+                {% else %}
+                    <p>No matches found for the specified criteria</p>
+                {% endif %}
+                <hr>
+                <p class="mb-0">Try broadening your search criteria or using fuzzy matching.</p>
+            {% endif %}
+        </div>
+
+        <div class="search-tools mb-4">
+            <div class="input-group">
+                <input type="text" class="form-control" id="resultFilter" placeholder="Filter these results...">
+                <button class="btn btn-outline-secondary" type="button" id="clearFilter">Clear</button>
+            </div>
+        </div>
+
+        <div class="row" id="resultContainer">
+            {% for result in results %}
+                <div class="col-lg-6 col-md-12 result-item">
+                    <div class="card result-card">
+                        <div class="card-header">
+                            {% set client_name = result.get('full_name') or result.get('CLIENT NAME') or result.get('Client Name') or 'Unknown Client' %}
+                            <h5 class="card-title mb-0">{{ client_name }}</h5>
+                            <span class="badge bg-info source-badge">{{ result.Source_File }}</span>
+                        </div>
+                        <div class="card-body">
+                            {% for key, value in result.items() %}
+                                {% if key != 'Source_File' and key != 'Match_Score' and value and value|string != 'nan' %}
+                                    <div class="mb-2">
+                                        <strong>{{ key }}:</strong>
+                                        {% if query and query|lower in value|string|lower %}
+                                            {% set highlighted = value|string|replace(query, '<span class="highlight">' + query + '</span>')|safe %}
+                                            {{ highlighted }}
+                                        {% else %}
+                                            {{ value }}
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if result.get('Match_Score') %}
+                                <span class="badge bg-success score-badge">Match: {{ result.Match_Score }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        {% if count == 0 %}
+            <div class="text-center mt-5">
+                <p class="lead">Try modifying your search criteria</p>
+                <a href="/" class="btn btn-primary">New Search</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const resultFilter = document.getElementById('resultFilter');
+            const clearFilter = document.getElementById('clearFilter');
+            const resultItems = document.querySelectorAll('.result-item');
+            
+            resultFilter.addEventListener('input', function() {
+                const filterText = this.value.toLowerCase();
+                
+                resultItems.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    
+                    if (text.includes(filterText)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+            
+            clearFilter.addEventListener('click', function() {
+                resultFilter.value = '';
+                resultItems.forEach(item => {
+                    item.style.display = '';
+                });
+            });
+        });
+    </script>
+</body>
+</html> 
