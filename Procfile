@@ -1,1 +1,1 @@
-web: gunicorn render:app 
+web: gunicorn --log-file=- wsgi:application 

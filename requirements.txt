@@ -7,4 +7,5 @@ rapidfuzz==3.6.1
 fuzzywuzzy==0.18.0
 python-Levenshtein==0.23.0
 tqdm==4.66.2
-gunicorn==22.0.0 
+gunicorn==20.1.0
+Werkzeug==2.3.6 
