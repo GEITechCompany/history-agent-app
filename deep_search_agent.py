@@ -48,6 +48,16 @@ class DeepSearchAgent:
             except Exception as e:
                 print(f"Error creating consolidated schedules: {str(e)}")
         
+        # Check if consolidated QuickBooks data exists, if not try to create it
+        if 'consolidated_quickbooks.csv' not in csv_files and any(re.match(r'^\d{4}\s+QB\.csv$', f) for f in os.listdir('.')):
+            try:
+                self._ensure_consolidated_quickbooks()
+                # Add the newly created file to the list if it now exists
+                if os.path.exists('consolidated_quickbooks.csv'):
+                    csv_files.append('consolidated_quickbooks.csv')
+            except Exception as e:
+                print(f"Error creating consolidated QuickBooks data: {str(e)}")
+        
         return csv_files
     
     def _ensure_gkeep_structured(self):
@@ -85,6 +95,25 @@ class DeepSearchAgent:
             except Exception as e:
                 print(f"{Fore.RED}Failed to create consolidated schedules: {str(e)}{Style.RESET_ALL}")
                 raise
+
+    def _ensure_consolidated_quickbooks(self):
+        """Ensure consolidated QuickBooks data exists by running the processor if needed"""
+        if not os.path.exists('consolidated_quickbooks.csv') and os.path.exists('quickbooks_processor.py'):
+            print(f"{Fore.CYAN}Creating consolidated QuickBooks data...{Style.RESET_ALL}")
+            try:
+                # Import the quickbooks_processor module dynamically
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("quickbooks_processor", "quickbooks_processor.py")
+                quickbooks_processor = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(quickbooks_processor)
+                
+                # Create processor instance and run processing
+                processor = quickbooks_processor.QuickBooksProcessor()
+                processor.process_all_files()
+                print(f"{Fore.GREEN}Successfully created consolidated_quickbooks.csv{Style.RESET_ALL}")
+            except Exception as e:
+                print(f"{Fore.RED}Failed to create consolidated QuickBooks data: {str(e)}{Style.RESET_ALL}")
+                raise
     
     def load_csv_files(self):
         """Load all CSV files into pandas dataframes"""
@@ -99,6 +128,12 @@ class DeepSearchAgent:
                 if file == 'GKeep (Simple).csv' and 'GKeep_Structured.csv' in self.csv_files:
                     if self.debug:
                         print(f"Skipping {file} in favor of GKeep_Structured.csv")
+                    continue
+                
+                # Skip individual QuickBooks files if we have the consolidated version
+                if re.match(r'^\d{4}\s+QB\.csv$', file) and 'consolidated_quickbooks.csv' in self.csv_files:
+                    if self.debug:
+                        print(f"Skipping {file} in favor of consolidated_quickbooks.csv")
                     continue
                 
                 # Load the CSV file

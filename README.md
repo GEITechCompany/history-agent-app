@@ -113,6 +113,92 @@ python deep_search_agent.py --start-date 2023-11-01 --end-date 2023-11-30 --date
 python deep_search_agent.py --filter "Status:Active" "City:Mississauga"
 ```
 
+## QuickBooks Data Integration
+
+The application now includes robust support for QuickBooks CSV exports. This feature allows you to analyze and search through financial data from multiple years in a consolidated way.
+
+### Importing QuickBooks Data
+
+Simply place your QuickBooks CSV exports in the workspace directory with the naming format `YYYY QB.csv` (e.g., `2022 QB.csv`, `2023 QB.csv`).
+
+### Processing QuickBooks Data
+
+Use the QuickBooks processor to generate consolidated data:
+
+```bash
+python harmonize_quickbooks.py --summary
+```
+
+This will:
+1. Process all QuickBooks CSV files (supports multiple years)
+2. Combine them into a unified dataset with year tracking
+3. Create a SQLite database for more complex SQL queries
+4. Generate a summary report of your financial data
+
+### Searching QuickBooks Data
+
+Search for specific customer information or financial details:
+
+```bash
+python harmonize_quickbooks.py --update-search --query "Window Cleaning" --year 2023
+```
+
+Or search by customer name:
+
+```bash
+python harmonize_quickbooks.py --update-search --query "Smith" --customer
+```
+
+The QuickBooks data is also automatically incorporated into the Deep Search Agent, allowing you to search across all your business data at once.
+
+### Running SQL Queries on Financial Data
+
+The integration creates a SQLite database (quickbooks.db) that you can use for more complex financial analysis:
+
+```bash
+sqlite3 quickbooks.db "SELECT Customer, Year, \"Exterior Window Cleaning\" as Revenue FROM quickbooks WHERE Year = '2022' ORDER BY CAST(\"Exterior Window Cleaning\" AS NUMERIC) DESC LIMIT 10;"
+```
+
+This is particularly useful for:
+- Revenue analysis by service category
+- Year-over-year growth reporting
+- Customer spending analysis
+- Identifying top customers by service category
+- Seasonal trend analysis
+
+### Financial Analysis Utility
+
+For advanced financial analysis, use the included `query_quickbooks.py` utility:
+
+```bash
+# Show revenue by year with chart generation
+python query_quickbooks.py --revenue-by-year
+
+# View top services by revenue
+python query_quickbooks.py --top-services 7
+
+# Find top customers for a specific year
+python query_quickbooks.py --top-customers 8 --year 2022
+
+# Analyze a specific service performance over time
+python query_quickbooks.py --service "Exterior Window Cleaning"
+
+# Run a custom SQL query
+python query_quickbooks.py --custom-query "SELECT Customer, Total FROM quickbooks ORDER BY CAST(Total AS NUMERIC) DESC LIMIT 5"
+```
+
+The utility generates both textual output and visual charts for easier interpretation of the financial data.
+
+### Financial Insights
+
+The summary report provides key insights into your business data:
+- Total revenue by year
+- Top service categories by revenue
+- Top customers by spending
+- Revenue breakdown by service category
+
+These insights can help with business decision-making, identifying growth opportunities, and focusing on profitable service categories.
+
 ## Contributing
 
 Contributions are welcome! Feel free to submit a pull request or open an issue if you have suggestions for improvements.
