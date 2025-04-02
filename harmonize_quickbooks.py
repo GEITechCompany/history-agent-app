@@ -2,6 +2,7 @@
 import os
 import sys
 import argparse
+import time
 from colorama import Fore, Style, init
 
 # Initialize colorama for colored terminal output
@@ -12,12 +13,15 @@ def main():
     Harmonize QuickBooks CSV files with the workspace.
     This script processes QuickBooks data files and integrates them with the system.
     """
+    start_time = time.time()
+    
     parser = argparse.ArgumentParser(description='Harmonize QuickBooks CSV files with the workspace')
     parser.add_argument('--summary', action='store_true', help='Generate a summary report of the QuickBooks data')
     parser.add_argument('--update-search', action='store_true', help='Update the deep search agent with QuickBooks data')
     parser.add_argument('--query', type=str, help='Search query to run against the combined data')
     parser.add_argument('--year', type=str, help='Filter by year (e.g., 2022, 2023, etc.)')
     parser.add_argument('--customer', type=str, help='Filter by customer name')
+    parser.add_argument('--no-clean', action='store_true', help='Skip data cleaning (use existing processed files)')
     args = parser.parse_args()
     
     print(f"{Fore.CYAN}Starting QuickBooks data harmonization process...{Style.RESET_ALL}")
@@ -30,26 +34,32 @@ def main():
     
     print(f"{Fore.GREEN}Found {len(qb_files)} QuickBooks files: {qb_files}{Style.RESET_ALL}")
     
-    # Step 1: Process QuickBooks files and generate consolidated data
-    try:
-        import quickbooks_processor
-        processor = quickbooks_processor.QuickBooksProcessor()
-        success = processor.process_all_files()
-        
-        if not success:
-            print(f"{Fore.RED}Failed to process QuickBooks files. Exiting.{Style.RESET_ALL}")
-            return
+    # Step 1: Process QuickBooks files and generate consolidated data (unless --no-clean is specified)
+    if args.no_clean and os.path.exists('consolidated_quickbooks.csv') and os.path.exists('quickbooks.db'):
+        print(f"{Fore.YELLOW}Using existing processed QuickBooks data (--no-clean specified){Style.RESET_ALL}")
+        success = True
+    else:
+        try:
+            import quickbooks_processor
+            processor = quickbooks_processor.QuickBooksProcessor()
+            success = processor.process_all_files()
             
-        # Generate summary if requested
-        if args.summary:
-            processor.generate_summary_report()
-    
-    except ImportError:
-        print(f"{Fore.RED}Error: quickbooks_processor.py not found or has errors. Please ensure it exists in the workspace.{Style.RESET_ALL}")
-        return
-    except Exception as e:
-        print(f"{Fore.RED}Error processing QuickBooks data: {str(e)}{Style.RESET_ALL}")
-        return
+            if not success:
+                print(f"{Fore.RED}Failed to process QuickBooks files. Exiting.{Style.RESET_ALL}")
+                return
+                
+            # Generate summary if requested
+            if args.summary:
+                processor.generate_summary_report()
+        
+        except ImportError:
+            print(f"{Fore.RED}Error: quickbooks_processor.py not found or has errors. Please ensure it exists in the workspace.{Style.RESET_ALL}")
+            return
+        except Exception as e:
+            print(f"{Fore.RED}Error processing QuickBooks data: {str(e)}{Style.RESET_ALL}")
+            import traceback
+            traceback.print_exc()
+            return
     
     # Step 2: Update the deep search agent if requested
     if args.update_search:
@@ -94,13 +104,20 @@ def main():
             return
         except Exception as e:
             print(f"{Fore.RED}Error updating search agent: {str(e)}{Style.RESET_ALL}")
+            import traceback
+            traceback.print_exc()
             return
     
-    print(f"{Fore.GREEN}QuickBooks data harmonization complete!{Style.RESET_ALL}")
+    end_time = time.time()
+    execution_time = end_time - start_time
+    
+    print(f"{Fore.GREEN}QuickBooks data harmonization complete! (Execution time: {execution_time:.2f} seconds){Style.RESET_ALL}")
     print("\nUse this data in the system with:")
     print("  - Deep search agent for searching across all data sources")
     print("  - SQLite database for direct SQL queries (quickbooks.db)")
     print("  - Consolidated CSV for spreadsheet analysis (consolidated_quickbooks.csv)")
+    print("\nTry the query_quickbooks.py utility for pre-built financial analyses")
+    print("Example: python3 query_quickbooks.py --revenue-by-year")
 
 if __name__ == "__main__":
     main() 

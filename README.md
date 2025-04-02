@@ -199,6 +199,85 @@ The summary report provides key insights into your business data:
 
 These insights can help with business decision-making, identifying growth opportunities, and focusing on profitable service categories.
 
+## QuickBooks Data Integration Utility
+
+This utility allows you to integrate QuickBooks data with the History Agent system for seamless financial analysis.
+
+### Features
+
+* **Data Harmonization**: Process QuickBooks CSV files (named like "2022 QB.csv") and convert them into a standardized format
+* **Consolidated Database**: Store all financial data in a SQLite database for easy querying
+* **Financial Analysis**: Run pre-built financial analyses to gain insights from your QuickBooks data
+* **Visual Reports**: Generate charts for revenue trends, top services, and top customers
+* **Deep Search Integration**: Search across financial data alongside other system data
+
+### How to Use
+
+1. **Process QuickBooks Files**:
+   ```
+   python3 harmonize_quickbooks.py --summary
+   ```
+   This will process all QuickBooks CSV files (named like "YYYY QB.csv") and generate a consolidated database and summary report.
+
+2. **Analyze Financial Data**:
+   ```
+   python3 query_quickbooks.py --revenue-by-year
+   python3 query_quickbooks.py --top-services 5
+   python3 query_quickbooks.py --top-customers --year 2022
+   python3 query_quickbooks.py --service "Exterior Window Cleaning"
+   ```
+
+3. **List Available Services**:
+   ```
+   python3 query_quickbooks.py --list-services
+   ```
+
+4. **Run Custom SQL Queries**:
+   ```
+   python3 query_quickbooks.py --custom-query "SELECT * FROM quickbooks LIMIT 5"
+   ```
+
+### Options
+
+* `--summary`: Generate a summary report of the processed data
+* `--no-clean`: Skip data processing and use existing processed files
+* `--update-search`: Update the deep search agent with QuickBooks data
+* `--query`: Run a search query against the data
+* `--year`: Filter results by year
+* `--verbose`: Show detailed logs during processing
+
+## Recent Optimizations and Improvements
+
+The system has recently undergone several optimizations and bug fixes:
+
+### Performance Improvements
+- Added caching for frequently accessed data
+- Optimized SQLite queries for faster financial analysis
+- Improved data loading with proper type conversion
+- Added progress tracking for long-running operations
+
+### Bug Fixes
+- Fixed handling of 'nan' values in financial data
+- Resolved matplotlib warnings by properly handling string data types
+- Added robust error handling throughout the system
+- Fixed PyArrow integration for better pandas performance
+
+### New Features
+- Added the `--no-clean` option to skip reprocessing when data hasn't changed
+- Added `--list-services` command to show all available service categories
+- Added logging for better debugging and troubleshooting
+- Added execution time reporting for performance monitoring
+
+### Requirements
+- Added PyArrow support for improved pandas performance
+- Updated matplotlib to fix visualization issues
+- Added proper type handling for financial data
+
+To use the latest improvements, make sure to update your dependencies:
+```
+pip install -r requirements.txt
+```
+
 ## Contributing
 
 Contributions are welcome! Feel free to submit a pull request or open an issue if you have suggestions for improvements.

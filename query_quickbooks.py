@@ -13,6 +13,16 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 from colorama import Fore, Style, init
+import time
+import logging
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 # Initialize colorama
 init(autoreset=True)
@@ -27,11 +37,29 @@ class QuickBooksAnalyzer:
             print(f"{Fore.RED}Error: Database file '{db_path}' not found.{Style.RESET_ALL}")
             print(f"Run 'python harmonize_quickbooks.py' first to create the database.")
             sys.exit(1)
+        
+        # Test database connection
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchall()
+            if not tables:
+                print(f"{Fore.RED}Error: Database '{db_path}' exists but contains no tables.{Style.RESET_ALL}")
+                sys.exit(1)
+            if ('quickbooks',) not in tables:
+                print(f"{Fore.RED}Error: 'quickbooks' table not found in database.{Style.RESET_ALL}")
+                sys.exit(1)
+            conn.close()
+        except sqlite3.Error as e:
+            print(f"{Fore.RED}SQLite error: {e}{Style.RESET_ALL}")
+            sys.exit(1)
     
     def execute_query(self, query, params=None):
         """Execute an SQL query and return the results as a pandas DataFrame"""
         try:
             conn = sqlite3.connect(self.db_path)
+            conn.create_function("LOWER", 1, lambda x: x.lower() if x else None)
             if params:
                 df = pd.read_sql_query(query, conn, params=params)
             else:
@@ -43,6 +71,8 @@ class QuickBooksAnalyzer:
             return None
         except Exception as e:
             print(f"{Fore.RED}Error executing query: {e}{Style.RESET_ALL}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def revenue_by_year(self):
@@ -64,10 +94,16 @@ class QuickBooksAnalyzer:
             
             # Create a bar chart
             plt.figure(figsize=(10, 6))
-            plt.bar(df['Year'], df['TotalRevenue'], color='skyblue')
+            
+            # Convert Year to numeric for proper plotting if they're all numeric years
+            x_pos = range(len(df['Year']))
+            labels = df['Year'].tolist()
+            
+            plt.bar(x_pos, df['TotalRevenue'], color='skyblue')
             plt.title('Total Revenue by Year')
             plt.xlabel('Year')
             plt.ylabel('Revenue ($)')
+            plt.xticks(x_pos, labels)
             plt.grid(axis='y', linestyle='--', alpha=0.7)
             
             # Add revenue labels on top of bars
@@ -160,6 +196,8 @@ class QuickBooksAnalyzer:
             plt.tight_layout()
             plt.savefig('top_services.png')
             print(f"{Fore.GREEN}Chart saved as 'top_services.png'{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.YELLOW}No service revenue data found or error occurred.{Style.RESET_ALL}")
         return df
     
     def top_customers(self, year=None, limit=10):
@@ -212,6 +250,8 @@ class QuickBooksAnalyzer:
             filename = f"top_customers{'_' + year if year else ''}.png"
             plt.savefig(filename)
             print(f"{Fore.GREEN}Chart saved as '{filename}'{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.YELLOW}No customer revenue data found or error occurred.{Style.RESET_ALL}")
         return df
     
     def service_by_year(self, service):
@@ -234,10 +274,16 @@ class QuickBooksAnalyzer:
             
             # Create a bar chart
             plt.figure(figsize=(10, 6))
-            plt.bar(df['Year'], df['Revenue'], color='lightblue')
+            
+            # Convert Year to numeric for proper plotting if they're all numeric years
+            x_pos = range(len(df['Year']))
+            labels = df['Year'].tolist()
+            
+            plt.bar(x_pos, df['Revenue'], color='lightblue')
             plt.title(f'{service} Revenue by Year')
             plt.xlabel('Year')
             plt.ylabel('Revenue ($)')
+            plt.xticks(x_pos, labels)
             plt.grid(axis='y', linestyle='--', alpha=0.7)
             
             # Add revenue labels on top of bars
@@ -248,18 +294,47 @@ class QuickBooksAnalyzer:
             filename = f"{service.lower().replace(' ', '_')}_by_year.png"
             plt.savefig(filename)
             print(f"{Fore.GREEN}Chart saved as '{filename}'{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.YELLOW}No data found for service '{service}' or error occurred.{Style.RESET_ALL}")
         return df
+    
+    def get_all_services(self):
+        """Get a list of all available service columns"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(quickbooks)")
+            columns = cursor.fetchall()
+            conn.close()
+            
+            # Filter out non-service columns
+            non_service_cols = ['Customer', 'Year', 'Total']
+            service_cols = [col[1] for col in columns if col[1] not in non_service_cols]
+            
+            return service_cols
+        except Exception as e:
+            print(f"{Fore.RED}Error getting service columns: {e}{Style.RESET_ALL}")
+            return []
     
     def custom_query(self, query):
         """Execute a custom SQL query"""
-        df = self.execute_query(query)
-        if df is not None and not df.empty:
-            print(f"\n{Fore.CYAN}Query Results:{Style.RESET_ALL}")
-            print(df)
-        return df
+        try:
+            df = self.execute_query(query)
+            if df is not None and not df.empty:
+                print(f"\n{Fore.CYAN}Query Results:{Style.RESET_ALL}")
+                print(df)
+                return df
+            else:
+                print(f"{Fore.YELLOW}No results returned from query or error occurred.{Style.RESET_ALL}")
+                return None
+        except Exception as e:
+            print(f"{Fore.RED}Error executing custom query: {e}{Style.RESET_ALL}")
+            return None
 
 def main():
     """Main function to run the analyzer from command line"""
+    start_time = time.time()
+    
     parser = argparse.ArgumentParser(description='QuickBooks Database Query Utility')
     
     parser.add_argument('--revenue-by-year', action='store_true', 
@@ -270,38 +345,66 @@ def main():
                         help='Show top customers by revenue (default: top 10)')
     parser.add_argument('--year', type=str, help='Filter results by year (e.g., 2022)')
     parser.add_argument('--service', type=str, help='Show revenue for a specific service by year')
+    parser.add_argument('--list-services', action='store_true', help='List all available service categories')
     parser.add_argument('--custom-query', type=str, help='Execute a custom SQL query')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
     
     args = parser.parse_args()
     
-    analyzer = QuickBooksAnalyzer()
+    # Set logging level based on verbosity
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
     
-    # Execute the requested analyses
-    if args.revenue_by_year:
-        analyzer.revenue_by_year()
-    
-    if args.top_services is not None:
-        analyzer.top_services(args.top_services)
-    
-    if args.top_customers is not None:
-        analyzer.top_customers(args.year, args.top_customers)
-    
-    if args.service:
-        analyzer.service_by_year(args.service)
-    
-    if args.custom_query:
-        analyzer.custom_query(args.custom_query)
-    
-    # If no specific analysis was requested, show help
-    if not any([args.revenue_by_year, args.top_services is not None, 
-                args.top_customers is not None, args.service, args.custom_query]):
-        parser.print_help()
-        print(f"\n{Fore.YELLOW}Example usage:{Style.RESET_ALL}")
-        print("  python query_quickbooks.py --revenue-by-year")
-        print("  python query_quickbooks.py --top-services 5")
-        print("  python query_quickbooks.py --top-customers --year 2022")
-        print("  python query_quickbooks.py --service \"Exterior Window Cleaning\"")
-        print("  python query_quickbooks.py --custom-query \"SELECT * FROM quickbooks LIMIT 5\"")
+    try:
+        analyzer = QuickBooksAnalyzer()
+        
+        # List services if requested
+        if args.list_services:
+            services = analyzer.get_all_services()
+            print(f"\n{Fore.CYAN}Available Service Categories ({len(services)}):{Style.RESET_ALL}")
+            for i, service in enumerate(sorted(services), 1):
+                print(f"  {i}. {service}")
+        
+        # Execute the requested analyses
+        if args.revenue_by_year:
+            analyzer.revenue_by_year()
+        
+        if args.top_services is not None:
+            analyzer.top_services(args.top_services)
+        
+        if args.top_customers is not None:
+            analyzer.top_customers(args.year, args.top_customers)
+        
+        if args.service:
+            analyzer.service_by_year(args.service)
+        
+        if args.custom_query:
+            analyzer.custom_query(args.custom_query)
+        
+        # If no specific analysis was requested, show help
+        if not any([args.revenue_by_year, args.top_services is not None, 
+                    args.top_customers is not None, args.service, 
+                    args.custom_query, args.list_services]):
+            parser.print_help()
+            print(f"\n{Fore.YELLOW}Example usage:{Style.RESET_ALL}")
+            print("  python query_quickbooks.py --revenue-by-year")
+            print("  python query_quickbooks.py --top-services 5")
+            print("  python query_quickbooks.py --top-customers --year 2022")
+            print("  python query_quickbooks.py --service \"Exterior Window Cleaning\"")
+            print("  python query_quickbooks.py --list-services")
+            print("  python query_quickbooks.py --custom-query \"SELECT * FROM quickbooks LIMIT 5\"")
+        
+        # Print execution time if verbose
+        end_time = time.time()
+        execution_time = end_time - start_time
+        logger.debug(f"Execution time: {execution_time:.2f} seconds")
+        
+    except Exception as e:
+        print(f"{Fore.RED}Unexpected error: {e}{Style.RESET_ALL}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == '__main__':
     main() 
