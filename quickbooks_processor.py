@@ -40,16 +40,23 @@ class QuickBooksProcessor:
             # Add a Year column to identify the source year
             df['Year'] = year
             
-            # Clean up dollar amounts if necessary
+            # Clean up dollar amounts and handle NaN values
             for column in df.columns:
                 if column not in ['Customer', 'Year']:
                     try:
-                        # Remove commas and dollar signs if present
+                        # First clean the values (remove $ and commas)
                         df[column] = df[column].astype(str).str.replace(',', '').str.replace('$', '')
-                        # Convert to float where possible
-                        df[column] = pd.to_numeric(df[column], errors='ignore')
-                    except:
-                        pass
+                        
+                        # Replace empty strings and 'nan' with actual NaN
+                        df[column] = df[column].replace(['', 'nan', 'NaN', 'None'], pd.NA)
+                        
+                        # Convert to numeric, coercing errors to NaN
+                        df[column] = pd.to_numeric(df[column], errors='coerce')
+                        
+                        # Fill NaN values with 0 for numeric columns
+                        df[column] = df[column].fillna(0)
+                    except Exception as e:
+                        print(f"Warning: Could not fully process column {column}: {str(e)}")
             
             return df
         
@@ -140,43 +147,33 @@ class QuickBooksProcessor:
         # Generate year-by-year revenue summary
         print("\nYearly Revenue Summary:")
         try:
+            # Use numeric values directly since we've already converted and cleaned them
             yearly_totals = self.combined_data.groupby('Year')['Total'].sum()
             for year, total in yearly_totals.items():
-                # Check if total is a string and convert if needed
-                if isinstance(total, str):
-                    # Remove commas and convert to float
-                    try:
-                        clean_total = float(total.replace(',', '').replace('$', ''))
-                        print(f"  {year}: ${clean_total:.2f}")
-                    except ValueError:
-                        print(f"  {year}: {total} (could not convert to number)")
-                else:
-                    print(f"  {year}: ${float(total):.2f}")
+                # Ensure we're working with a number
+                try:
+                    # If it's somehow still a string, convert it
+                    if isinstance(total, str):
+                        total = float(total.replace(',', '').replace('$', ''))
+                    print(f"  {year}: ${float(total):,.2f}")
+                except (ValueError, TypeError):
+                    print(f"  {year}: ${0.00} (invalid value)")
             
             # Calculate the total across all years
-            total_sum = 0
-            for total in yearly_totals:
-                if isinstance(total, str):
-                    try:
-                        total_sum += float(total.replace(',', '').replace('$', ''))
-                    except ValueError:
-                        pass  # Skip if we can't convert
-                else:
-                    total_sum += float(total)
-            
-            print(f"\nTotal Revenue: ${total_sum:.2f}")
+            total_revenue = yearly_totals.sum()
+            print(f"\nTotal Revenue: ${float(total_revenue):,.2f}")
         except Exception as e:
             print(f"Error processing yearly revenue: {str(e)}")
         
         # Top 5 customers by revenue
         print("\nTop 5 Customers (by Revenue):")
         try:
+            # Group by customer and sum the Total column
             customer_totals = self.combined_data.groupby('Customer')['Total'].sum()
-            customer_totals = customer_totals.astype(str).apply(lambda x: float(x.replace(',', '').replace('$', '')) if isinstance(x, str) else float(x))
             top_customers = customer_totals.sort_values(ascending=False).head(5)
             
             for customer, total in top_customers.items():
-                print(f"  {customer}: ${float(total):.2f}")
+                print(f"  {customer}: ${float(total):,.2f}")
         except Exception as e:
             print(f"Error processing top customers: {str(e)}")
         
@@ -185,19 +182,14 @@ class QuickBooksProcessor:
         try:
             service_totals = {}
             for service in service_columns:
-                # Convert column to numeric, handling string values
-                col_values = self.combined_data[service].astype(str).apply(
-                    lambda x: float(x.replace(',', '').replace('$', '')) 
-                    if x and x != 'nan' and isinstance(x, str) 
-                    else 0.0
-                )
-                total = col_values.sum()
+                # Sum values directly (they should be numeric now)
+                total = self.combined_data[service].sum()
                 if total > 0:
                     service_totals[service] = total
             
             top_services = sorted(service_totals.items(), key=lambda x: x[1], reverse=True)[:5]
             for service, total in top_services:
-                print(f"  {service}: ${float(total):.2f}")
+                print(f"  {service}: ${float(total):,.2f}")
         except Exception as e:
             print(f"Error processing top services: {str(e)}")
 

@@ -48,9 +48,11 @@ class QuickBooksAnalyzer:
     def revenue_by_year(self):
         """Get total revenue by year"""
         query = """
-        SELECT Year, SUM(CAST(Total AS NUMERIC)) as TotalRevenue
+        SELECT Year, SUM(CASE 
+            WHEN Total IS NULL OR Total = '' OR Total = 'nan' THEN 0
+            ELSE CAST(Total AS NUMERIC) 
+        END) as TotalRevenue
         FROM quickbooks
-        WHERE Total IS NOT NULL AND Total != ''
         GROUP BY Year
         ORDER BY Year
         """
@@ -83,38 +85,52 @@ class QuickBooksAnalyzer:
         query = """
         WITH service_revenue AS (
             SELECT 'Exterior Window Cleaning' as Service,
-                SUM(CASE WHEN "Exterior Window Cleaning" IS NOT NULL AND "Exterior Window Cleaning" != '' 
-                    THEN CAST("Exterior Window Cleaning" AS NUMERIC) ELSE 0 END) as Revenue
+                SUM(CASE 
+                    WHEN "Exterior Window Cleaning" IS NULL OR "Exterior Window Cleaning" = '' OR "Exterior Window Cleaning" = 'nan' THEN 0 
+                    ELSE CAST("Exterior Window Cleaning" AS NUMERIC) 
+                END) as Revenue
             FROM quickbooks
             UNION ALL
             SELECT 'Interior Window Cleaning' as Service,
-                SUM(CASE WHEN "Interior Window Cleaning" IS NOT NULL AND "Interior Window Cleaning" != '' 
-                    THEN CAST("Interior Window Cleaning" AS NUMERIC) ELSE 0 END) as Revenue
+                SUM(CASE 
+                    WHEN "Interior Window Cleaning" IS NULL OR "Interior Window Cleaning" = '' OR "Interior Window Cleaning" = 'nan' THEN 0 
+                    ELSE CAST("Interior Window Cleaning" AS NUMERIC) 
+                END) as Revenue
             FROM quickbooks
             UNION ALL
             SELECT 'Eaves Cleaning' as Service,
-                SUM(CASE WHEN "Eaves Cleaning" IS NOT NULL AND "Eaves Cleaning" != '' 
-                    THEN CAST("Eaves Cleaning" AS NUMERIC) ELSE 0 END) as Revenue
+                SUM(CASE 
+                    WHEN "Eaves Cleaning" IS NULL OR "Eaves Cleaning" = '' OR "Eaves Cleaning" = 'nan' THEN 0 
+                    ELSE CAST("Eaves Cleaning" AS NUMERIC) 
+                END) as Revenue
             FROM quickbooks
             UNION ALL
             SELECT 'Track Cleaning' as Service,
-                SUM(CASE WHEN "Track Cleaning" IS NOT NULL AND "Track Cleaning" != '' 
-                    THEN CAST("Track Cleaning" AS NUMERIC) ELSE 0 END) as Revenue
+                SUM(CASE 
+                    WHEN "Track Cleaning" IS NULL OR "Track Cleaning" = '' OR "Track Cleaning" = 'nan' THEN 0 
+                    ELSE CAST("Track Cleaning" AS NUMERIC) 
+                END) as Revenue
             FROM quickbooks
             UNION ALL
             SELECT 'Screen Cleaning' as Service,
-                SUM(CASE WHEN "Screen Cleaning" IS NOT NULL AND "Screen Cleaning" != '' 
-                    THEN CAST("Screen Cleaning" AS NUMERIC) ELSE 0 END) as Revenue
+                SUM(CASE 
+                    WHEN "Screen Cleaning" IS NULL OR "Screen Cleaning" = '' OR "Screen Cleaning" = 'nan' THEN 0 
+                    ELSE CAST("Screen Cleaning" AS NUMERIC) 
+                END) as Revenue
             FROM quickbooks
             UNION ALL
             SELECT 'Eavestrough Cleaning' as Service,
-                SUM(CASE WHEN "Eavestrough Cleaning" IS NOT NULL AND "Eavestrough Cleaning" != '' 
-                    THEN CAST("Eavestrough Cleaning" AS NUMERIC) ELSE 0 END) as Revenue
+                SUM(CASE 
+                    WHEN "Eavestrough Cleaning" IS NULL OR "Eavestrough Cleaning" = '' OR "Eavestrough Cleaning" = 'nan' THEN 0 
+                    ELSE CAST("Eavestrough Cleaning" AS NUMERIC) 
+                END) as Revenue
             FROM quickbooks
             UNION ALL
             SELECT 'Power Washing' as Service,
-                SUM(CASE WHEN "Power Washing" IS NOT NULL AND "Power Washing" != '' 
-                    THEN CAST("Power Washing" AS NUMERIC) ELSE 0 END) as Revenue
+                SUM(CASE 
+                    WHEN "Power Washing" IS NULL OR "Power Washing" = '' OR "Power Washing" = 'nan' THEN 0 
+                    ELSE CAST("Power Washing" AS NUMERIC) 
+                END) as Revenue
             FROM quickbooks
         )
         SELECT Service, Revenue
@@ -150,19 +166,24 @@ class QuickBooksAnalyzer:
         """Get top customers by revenue for a specific year or all years"""
         if year:
             query = """
-            SELECT Customer, CAST(Total AS NUMERIC) as Revenue
+            SELECT Customer, CASE 
+                WHEN Total IS NULL OR Total = '' OR Total = 'nan' THEN 0
+                ELSE CAST(Total AS NUMERIC) 
+            END as Revenue
             FROM quickbooks
-            WHERE Total IS NOT NULL AND Total != '' AND Year = ?
-            ORDER BY CAST(Total AS NUMERIC) DESC
+            WHERE Year = ?
+            ORDER BY Revenue DESC
             LIMIT ?
             """
             df = self.execute_query(query, (year, limit))
             title = f"Top {limit} Customers for {year}"
         else:
             query = """
-            SELECT Customer, SUM(CAST(Total AS NUMERIC)) as Revenue
+            SELECT Customer, SUM(CASE 
+                WHEN Total IS NULL OR Total = '' OR Total = 'nan' THEN 0
+                ELSE CAST(Total AS NUMERIC) 
+            END) as Revenue
             FROM quickbooks
-            WHERE Total IS NOT NULL AND Total != ''
             GROUP BY Customer
             ORDER BY Revenue DESC
             LIMIT ?
@@ -197,9 +218,11 @@ class QuickBooksAnalyzer:
         """Get revenue for a specific service by year"""
         # Use parameterized column names by constructing the query dynamically
         query = f"""
-        SELECT Year, SUM(CAST("{service}" AS NUMERIC)) as Revenue
+        SELECT Year, SUM(CASE 
+            WHEN "{service}" IS NULL OR "{service}" = '' OR "{service}" = 'nan' THEN 0
+            ELSE CAST("{service}" AS NUMERIC) 
+        END) as Revenue
         FROM quickbooks
-        WHERE "{service}" IS NOT NULL AND "{service}" != ''
         GROUP BY Year
         ORDER BY Year
         """
